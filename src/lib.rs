@@ -54,3 +54,24 @@ pub fn random_jumbled() -> Option<String> {
     chars.shuffle(&mut rng);
     Some(chars.into_iter().collect())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn canonical_strips_and_sorts() {
+        // "Panama!" -> letters p a n a m a -> lowercase -> a a a m n p -> "aaamnp"
+        assert_eq!(canonical("Panama!"), "aaamnp");
+    }
+
+    #[test]
+    fn find_anagrams_finds_orange() {
+        let matches = find_anagrams("orange");
+        assert!(
+            matches.iter().any(|w| w.eq_ignore_ascii_case("orange")),
+            "expected 'orange' in matches: {:?}",
+            matches
+        );
+    }
+}
