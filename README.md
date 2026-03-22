@@ -22,5 +22,7 @@ Example:
 
 Or build and run the binary:
 
+```bash
   cargo build --release
   ./target/release/anagram_gen solve zebra
+```
