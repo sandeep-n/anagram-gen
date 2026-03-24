@@ -18,11 +18,11 @@ pub fn canonical(s: &str) -> String {
 
 /// Find single-word anagrams of `target` in the bundled corpus.
 /// Returns a list of matching corpus words (deduplicated, original order preserved).
-pub fn find_anagrams(target: &str) -> Vec<String> {
+pub fn find_anagrams(words: &str, target: &str) -> Vec<String> {
     let target_can = canonical(target);
     let mut seen = HashSet::new();
     let mut matches = Vec::new();
-    for line in WORDS.lines() {
+    for line in words.lines() {
         let w = line.trim();
         if w.is_empty() || w.starts_with('#') {
             continue;
@@ -35,8 +35,8 @@ pub fn find_anagrams(target: &str) -> Vec<String> {
 }
 
 /// Return filtered choices from the bundled corpus.
-pub fn filtered_choices() -> Vec<&'static str> {
-    WORDS
+pub fn filtered_choices(words: &str) -> Vec<&str> {
+    words
         .lines()
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())
@@ -46,8 +46,8 @@ pub fn filtered_choices() -> Vec<&'static str> {
 }
 
 /// Pick a random word from the filtered choices and return a jumbled version.
-pub fn random_jumbled() -> Option<String> {
-    let choices = filtered_choices();
+pub fn random_jumbled(words: &str) -> Option<String> {
+    let choices = filtered_choices(words);
     let mut rng = thread_rng();
     let word = choices.choose(&mut rng)?;
     let mut chars: Vec<char> = word.chars().collect();
@@ -67,7 +67,7 @@ mod tests {
 
     #[test]
     fn find_anagrams_finds_orange() {
-        let matches = find_anagrams("orange");
+        let matches = find_anagrams(WORDS, "orange");
         assert!(
             matches.iter().any(|w| w.eq_ignore_ascii_case("orange")),
             "expected 'orange' in matches: {:?}",
