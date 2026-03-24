@@ -1,0 +1,37 @@
+[config]
+# Default task when running `cargo make`
+default_task = "check"
+
+[tasks.fmt]
+description = "Format the Rust code"
+command = "cargo"
+args = ["fmt"]
+
+[tasks.clippy]
+description = "Run clippy and deny warnings"
+command = "cargo"
+args = ["clippy", "--all-targets", "--all-features", "--", "-D", "warnings"]
+
+[tasks.test]
+description = "Run unit tests"
+command = "cargo"
+args = ["test"]
+
+[tasks.precommit]
+description = "Run pre-commit hooks"
+command = "pre-commit"
+args = ["run", "--all-files"]
+
+[tasks.check]
+description = "Run fmt, clippy, and tests"
+dependencies = ["fmt", "clippy", "test"]
+
+[tasks.run-prompt]
+description = "Run the prompt CLI (no args)"
+command = "cargo"
+args = ["run", "--"]
+
+[tasks.run-solve]
+description = "Run the solve CLI for a sample word (orange)"
+command = "cargo"
+args = ["run", "--", "solve", "orange"]

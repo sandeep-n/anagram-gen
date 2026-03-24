@@ -26,3 +26,25 @@ Or build and run the binary:
   cargo build --release
   ./target/release/anagram_gen solve zebra
 ```
+
+## Development
+
+- Install `cargo-make` (recommended):
+
+  ```bash
+  cargo install cargo-make
+  ```
+
+- Common tasks (from the project root):
+
+  - `cargo make check` — format, lint (clippy), and run tests
+  - `cargo make run-prompt` — run prompt mode (prints a jumbled word)
+  - `cargo make run-solve` — run the `solve orange` example
+
+- You can also run pre-commit hooks directly:
+
+  ```bash
+  pre-commit run --all-files
+  ```
+
+These commands standardize developer workflows across machines and CI.
