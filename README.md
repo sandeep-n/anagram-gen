@@ -18,6 +18,10 @@ Usage:
 
   `cargo run -- solve <word-or-phrase>`
 
+  For phrases with spaces, wrap in quotes:
+
+  `cargo run -- solve "due sit"`
+
 Example:
 
   `cargo run -- solve zebra`

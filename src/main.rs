@@ -14,8 +14,11 @@ enum Commands {
     /// Print a jumbled random prompt (same as running with no args)
     Prompt,
     /// Find single-word anagrams in the bundled corpus
+    ///
+    /// Words and phrases are both accepted; for phrases, wrap in quotes:
+    /// `cargo run -- solve "fun day"`.
     Solve {
-        /// Word or phrase to solve
+        /// Word or phrase to solve (use quotes for spaces)
         word: String,
     },
 }
