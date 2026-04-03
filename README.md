@@ -8,6 +8,8 @@ Usage:
 
   `cargo run`
 
+  (or `cargo run --bin anagram_gen`)
+
 - `prompt` subcommand (same as no args):
 
   `cargo run -- prompt`
