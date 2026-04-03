@@ -2,6 +2,22 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::io::Write;
 
+const MAX_WORDS: usize = 10_000;
+
+/// Strip non-ASCII-alphabetic characters, lowercase, and return `None` if the result is empty.
+fn clean_word(word: &str) -> Option<String> {
+    let cleaned: String = word
+        .chars()
+        .filter(|c| c.is_ascii_alphabetic())
+        .map(|c| c.to_ascii_lowercase())
+        .collect();
+    if cleaned.is_empty() {
+        None
+    } else {
+        Some(cleaned)
+    }
+}
+
 /// Small helper to download and clean the corpus into `assets/words.txt`.
 ///
 /// Usage:
@@ -20,33 +36,21 @@ fn main() -> Result<()> {
         .into_string()
         .map_err(|e| anyhow::anyhow!("failed to read response body: {}", e))?;
 
-    // Process lines: take first 10k lines, extract first column, lowercase, keep alphabetic only.
-    let mut out = String::new();
-    for (i, line) in body.lines().enumerate() {
-        if i >= 10_000 {
-            break;
-        }
-        if line.trim().is_empty() {
-            continue;
-        }
-        // assume format: word <whitespace> frequency
-        let word = line.split_whitespace().next().unwrap_or("");
-        let cleaned: String = word
-            .chars()
-            .filter(|c| c.is_ascii_alphabetic())
-            .map(|c| c.to_ascii_lowercase())
-            .collect();
-        if cleaned.is_empty() {
-            continue;
-        }
-        out.push_str(&cleaned);
-        out.push('\n');
-    }
+    // Process lines: take first MAX_WORDS lines, extract first column, clean, skip empties.
+    // Format assumed: "word frequency" per line.
+    let words: Vec<String> = body
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .take(MAX_WORDS)
+        .filter_map(|line| line.split_whitespace().next().and_then(clean_word))
+        .collect();
 
     fs::create_dir_all("assets").context("failed to create assets dir")?;
     let path = "assets/words.txt";
     let mut file = fs::File::create(path).context("failed to create assets/words.txt")?;
-    file.write_all(out.as_bytes())?;
-    println!("Wrote cleaned corpus to {}", path);
+    for word in &words {
+        writeln!(file, "{}", word)?;
+    }
+    println!("Wrote {} words to {}", words.len(), path);
     Ok(())
 }
