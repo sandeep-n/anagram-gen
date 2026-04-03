@@ -66,6 +66,22 @@ pub fn filtered_choices(words: &str) -> Vec<&str> {
         .collect()
 }
 
+/// Pick a random cleaned choice word from the corpus.
+pub fn pick_random_choice(words: &str) -> Option<String> {
+    let choices = filtered_choices(words);
+    let mut rng = thread_rng();
+    let word = choices.choose(&mut rng)?;
+    Some(word.to_string())
+}
+
+/// Shuffle letters of a word.
+pub fn shuffle_word(word: &str) -> String {
+    let mut chars: Vec<char> = word.chars().collect();
+    let mut rng = thread_rng();
+    chars.shuffle(&mut rng);
+    chars.into_iter().collect()
+}
+
 /// Pick a random word from the filtered choices and return a jumbled version.
 pub fn random_jumbled(words: &str) -> Option<String> {
     let choices = filtered_choices(words);
