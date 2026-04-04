@@ -27,7 +27,7 @@ fn run_interactive_prompt() -> Result<(), Box<dyn std::error::Error>> {
     let answer = anagram_gen::pick_random_choice(anagram_gen::WORDS)
         .ok_or("corpus has no eligible prompt words")?;
     let scrambled = loop {
-        let cand = anagram_gen::shuffle_word(&answer);
+        let cand = anagram_gen::shuffle(&answer);
         if cand != answer {
             break cand;
         }

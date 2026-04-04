@@ -4,6 +4,9 @@ use rand::thread_rng;
 use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 
+const MIN_INTERESTING_WORD_LEN: usize = 5;
+const MAX_INTERESTING_WORD_LEN: usize = 10;
+
 /// Bundled word list (replace with full top-10k later)
 pub const WORDS: &str = include_str!("../assets/words.txt");
 
@@ -18,32 +21,41 @@ pub fn canonical(s: &str) -> String {
     chars.into_iter().collect()
 }
 
-/// Find single-word anagrams of `target` in the bundled corpus.
-/// Returns a list of matching corpus words (deduplicated, original order preserved).
-pub fn find_anagrams(words: &str, target: &str) -> Vec<String> {
-    // Use precomputed map for O(1) lookup when available. The map is built from `words`.
-    let target_can = canonical(target);
-    let map = build_map(words);
-    match map.get(&target_can) {
-        Some(vec) => vec.clone(),
-        None => Vec::new(),
+/// Determine whether a single corpus word is eligible for prompt mode.
+pub fn is_interesting_word(word: &str) -> bool {
+    let word = word.trim();
+    let len = word.len();
+    (MIN_INTERESTING_WORD_LEN..=MAX_INTERESTING_WORD_LEN).contains(&len)
+        && word.chars().all(|c| c.is_ascii_alphabetic())
+}
+
+/// Convert a text line from the corpus into a word candidate.
+pub fn line_to_word(line: &str) -> Option<&str> {
+    let candidate = line.trim();
+    if candidate.is_empty() || candidate.starts_with('#') {
+        None
+    } else {
+        Some(candidate)
     }
 }
 
-/// Build or return a cached canonical->words map for the provided corpus.
+/// Find single-word anagrams of `target` in the bundled corpus.
+/// Returns a list of matching corpus words (deduplicated, original order preserved).
+pub fn find_anagrams(words: &str, target: &str) -> Vec<String> {
+    let target_can = canonical(target);
+    let map = build_map(words);
+    map.get(&target_can).cloned().unwrap_or_default()
+}
+
+/// Build a canonical->words map for the provided corpus.
 fn build_map(words: &str) -> HashMap<String, Vec<String>> {
-    // Note: we don't memoize per-corpus string value; we build a fresh map each call for now.
-    // For binary use with the bundled `WORDS` constant, we expose a lazy cached map below.
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
     let mut seen = HashSet::new();
-    for line in words.lines() {
-        let w = line.trim();
-        if w.is_empty() || w.starts_with('#') {
-            continue;
-        }
-        if seen.insert(w.to_string()) {
-            let can = canonical(w);
-            map.entry(can).or_default().push(w.to_string());
+    for word in words.lines().filter_map(line_to_word) {
+        if seen.insert(word.to_string()) {
+            map.entry(canonical(word))
+                .or_default()
+                .push(word.to_string());
         }
     }
     map
@@ -59,37 +71,24 @@ pub static BUNDLED_MAP: Lazy<Mutex<HashMap<String, Vec<String>>>> = Lazy::new(||
 pub fn filtered_choices(words: &str) -> Vec<&str> {
     words
         .lines()
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty())
-        // basic interestingness filter: alphabetic and length between 5 and 10
-        .filter(|s| s.len() >= 5 && s.len() <= 10 && s.chars().all(|c| c.is_ascii_alphabetic()))
+        .filter_map(line_to_word)
+        .filter(|word| is_interesting_word(word))
         .collect()
 }
 
 /// Pick a random cleaned choice word from the corpus.
 pub fn pick_random_choice(words: &str) -> Option<String> {
-    let choices = filtered_choices(words);
-    let mut rng = thread_rng();
-    let word = choices.choose(&mut rng)?;
-    Some(word.to_string())
+    filtered_choices(words)
+        .choose(&mut thread_rng())
+        .map(|word| word.to_string())
 }
 
 /// Shuffle letters of a word.
-pub fn shuffle_word(word: &str) -> String {
+pub fn shuffle(word: &str) -> String {
     let mut chars: Vec<char> = word.chars().collect();
     let mut rng = thread_rng();
     chars.shuffle(&mut rng);
     chars.into_iter().collect()
-}
-
-/// Pick a random word from the filtered choices and return a jumbled version.
-pub fn random_jumbled(words: &str) -> Option<String> {
-    let choices = filtered_choices(words);
-    let mut rng = thread_rng();
-    let word = choices.choose(&mut rng)?;
-    let mut chars: Vec<char> = word.chars().collect();
-    chars.shuffle(&mut rng);
-    Some(chars.into_iter().collect())
 }
 
 #[cfg(test)]
