@@ -72,9 +72,10 @@ const BUNDLED_MAP_BYTES: &[u8] = include_bytes!("../assets/bundled_map.bin");
 
 /// Cached map built from the bundled corpus asset for fast lookups.
 pub static BUNDLED_MAP: Lazy<Mutex<HashMap<String, Vec<String>>>> = Lazy::new(|| {
-    let (map, _) =
+    let (entries, _): (Vec<(String, Vec<String>)>, usize) =
         bincode::serde::decode_from_slice(BUNDLED_MAP_BYTES, bincode::config::standard())
             .expect("failed to deserialize bundled map");
+    let map: HashMap<String, Vec<String>> = entries.into_iter().collect();
     Mutex::new(map)
 });
 

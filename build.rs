@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::io::Write;
 use std::path::Path;
 
 #[derive(Serialize, Deserialize)]
-struct CanonicalMap(HashMap<String, Vec<String>>);
+struct CanonicalMap(Vec<(String, Vec<String>)>);
 
 fn canonical(word: &str) -> String {
     let mut chars: Vec<char> = word
@@ -38,7 +38,11 @@ fn main() -> std::io::Result<()> {
         map.entry(key).or_default().push(word.to_string());
     }
 
-    let bundle = CanonicalMap(map);
+    let mut sorted: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for (key, words) in map {
+        sorted.insert(key, words);
+    }
+    let bundle = CanonicalMap(sorted.into_iter().collect());
     let bytes = bincode::serde::encode_to_vec(&bundle, bincode::config::standard())
         .expect("failed to serialize bundled map");
 
