@@ -1,4 +1,5 @@
 use once_cell::sync::Lazy;
+use rand::prelude::IteratorRandom;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::collections::{HashMap, HashSet};
@@ -47,6 +48,12 @@ pub fn find_anagrams(words: &str, target: &str) -> Vec<String> {
     map.get(&target_can).cloned().unwrap_or_default()
 }
 
+/// Find single-word anagrams of `target` using a prebuilt canonical map.
+pub fn find_anagrams_from_map(map: &HashMap<String, Vec<String>>, target: &str) -> Vec<String> {
+    let target_can = canonical(target);
+    map.get(&target_can).cloned().unwrap_or_default()
+}
+
 /// Build a canonical->words map for the provided corpus.
 fn build_map(words: &str) -> HashMap<String, Vec<String>> {
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
@@ -61,10 +68,14 @@ fn build_map(words: &str) -> HashMap<String, Vec<String>> {
     map
 }
 
-/// Cached map built from the bundled `WORDS` constant for fast lookups.
+const BUNDLED_MAP_BYTES: &[u8] = include_bytes!("../assets/bundled_map.bin");
+
+/// Cached map built from the bundled corpus asset for fast lookups.
 pub static BUNDLED_MAP: Lazy<Mutex<HashMap<String, Vec<String>>>> = Lazy::new(|| {
-    let m = build_map(WORDS);
-    Mutex::new(m)
+    let (map, _) =
+        bincode::serde::decode_from_slice(BUNDLED_MAP_BYTES, bincode::config::standard())
+            .expect("failed to deserialize bundled map");
+    Mutex::new(map)
 });
 
 /// Return filtered choices from the bundled corpus.
@@ -81,6 +92,21 @@ pub fn pick_random_choice(words: &str) -> Option<String> {
     filtered_choices(words)
         .choose(&mut thread_rng())
         .map(|word| word.to_string())
+}
+
+/// Pick a random prompt answer from the prebuilt canonical map.
+pub fn pick_random_prompt_word(map: &HashMap<String, Vec<String>>) -> Option<String> {
+    let mut rng = thread_rng();
+    let buckets: Vec<_> = map
+        .values()
+        .filter(|values| values.iter().any(|word| is_interesting_word(word)))
+        .collect();
+    let chosen_bucket = buckets.choose(&mut rng)?;
+    chosen_bucket
+        .iter()
+        .filter(|word| is_interesting_word(word))
+        .choose(&mut rng)
+        .cloned()
 }
 
 /// Shuffle letters of a word.

@@ -24,8 +24,9 @@ enum Commands {
 }
 
 fn run_interactive_prompt() -> Result<(), Box<dyn std::error::Error>> {
-    let answer = anagram_gen::pick_random_choice(anagram_gen::WORDS)
-        .ok_or("corpus has no eligible prompt words")?;
+    let map = anagram_gen::BUNDLED_MAP.lock().unwrap();
+    let answer =
+        anagram_gen::pick_random_prompt_word(&map).ok_or("corpus has no eligible prompt words")?;
     let scrambled = loop {
         let cand = anagram_gen::shuffle(&answer);
         if cand != answer {
@@ -86,7 +87,8 @@ fn main() {
             }
         }
         Some(Commands::Solve { word }) => {
-            let matches = anagram_gen::find_anagrams(anagram_gen::WORDS, &word);
+            let map = anagram_gen::BUNDLED_MAP.lock().unwrap();
+            let matches = anagram_gen::find_anagrams_from_map(&map, &word);
             if matches.is_empty() {
                 println!("No anagrams found for: {}", word);
             } else {
