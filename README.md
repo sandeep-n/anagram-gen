@@ -14,6 +14,8 @@ Usage:
 
   `cargo run -- prompt`
 
+  In prompt mode, you can type guesses and use TAB to reshuffle the current jumble.
+
 - `solve` subcommand: search the bundled corpus for single-word anagrams
 
   `cargo run -- solve <word-or-phrase>`

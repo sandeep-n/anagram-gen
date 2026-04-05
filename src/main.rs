@@ -1,5 +1,9 @@
 use clap::{Parser, Subcommand};
-use std::io::{self, Write};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::execute;
+use crossterm::terminal::{self, ClearType};
+use crossterm::{cursor, queue, style::Print};
+use std::io::{self, Stdout, Write};
 
 /// Anagram Gen — small CLI for jumbled-word prompts and simple solves
 #[derive(Parser)]
@@ -25,63 +29,133 @@ enum Commands {
 
 fn run_interactive_prompt() -> Result<(), Box<dyn std::error::Error>> {
     let map = anagram_gen::BUNDLED_MAP.lock().unwrap();
+    let mut stdout = io::stdout();
 
     println!(
-        "Enter guesses for each prompt. Type 'give up' to reveal the answer, 'quit'/'exit' to leave, or Ctrl+D to exit."
+        "Enter guesses for each prompt. Tab reshuffles, 'give up' reveals the answer, 'quit'/'exit' leaves, Ctrl+D exits."
     );
 
-    loop {
-        let answer = anagram_gen::pick_random_prompt_word(&map)
-            .ok_or("corpus has no eligible prompt words")?;
-        let scrambled = loop {
-            let cand = anagram_gen::shuffle(&answer);
-            if cand != answer {
-                break cand;
-            }
-        };
-
-        let formatted_prompt = scrambled
-            .to_uppercase()
-            .chars()
-            .map(|c| c.to_string())
-            .collect::<Vec<_>>()
-            .join("·");
-
-        println!("\n{}", formatted_prompt);
-
+    terminal::enable_raw_mode()?;
+    let result = (|| {
         loop {
-            print!("> ");
-            io::stdout().flush()?;
-
+            let answer = anagram_gen::pick_random_prompt_word(&map)
+                .ok_or("corpus has no eligible prompt words")?;
+            let mut scrambled = loop {
+                let cand = anagram_gen::shuffle(&answer);
+                if cand != answer {
+                    break cand;
+                }
+            };
+            let mut formatted_prompt = format_prompt(&scrambled);
             let mut guess = String::new();
-            let nread = io::stdin().read_line(&mut guess)?;
-            if nread == 0 {
-                println!("\nGoodbye.");
-                return Ok(());
-            }
-            let guess = guess.trim().to_lowercase();
-            if guess.is_empty() {
-                continue;
-            }
 
-            if guess == "quit" || guess == "exit" {
-                println!("Exiting prompt mode.");
-                return Ok(());
-            }
+            draw_new_prompt(&mut stdout, &formatted_prompt, &guess)?;
 
-            if guess == "give up" || guess == "giveup" {
-                println!("The word was: {}", answer.to_uppercase());
-                break;
+            loop {
+                if let Event::Key(KeyEvent {
+                    code, modifiers, ..
+                }) = event::read()?
+                {
+                    match code {
+                        KeyCode::Char('c') if modifiers.contains(KeyModifiers::CONTROL) => {
+                            return Ok(());
+                        }
+                        KeyCode::Char('d') if modifiers.contains(KeyModifiers::CONTROL) => {
+                            return Ok(());
+                        }
+                        KeyCode::Tab => {
+                            scrambled = loop {
+                                let cand = anagram_gen::shuffle(&answer);
+                                if cand != answer {
+                                    break cand;
+                                }
+                            };
+                            formatted_prompt = format_prompt(&scrambled);
+                            render_prompt(&mut stdout, &formatted_prompt, &guess)?;
+                        }
+                        KeyCode::Enter => {
+                            let normalized = guess.trim().to_lowercase();
+                            if normalized.is_empty() {
+                                continue;
+                            }
+                            if normalized == "quit" || normalized == "exit" {
+                                return Ok(());
+                            }
+                            if normalized == "give up" || normalized == "giveup" {
+                                print!("\r\nThe word was: {}\r\n", answer.to_uppercase());
+                                break;
+                            }
+                            if normalized == answer {
+                                print!("\r\n🎉 Correct!\r\n");
+                                break;
+                            }
+                            print!("\r\nNope, try again or type 'give up'.\r\n");
+                            guess.clear();
+                            render_prompt(&mut stdout, &formatted_prompt, &guess)?;
+                        }
+                        KeyCode::Backspace => {
+                            guess.pop();
+                            render_prompt(&mut stdout, &formatted_prompt, &guess)?;
+                        }
+                        KeyCode::Char(c) => {
+                            guess.push(c);
+                            render_prompt(&mut stdout, &formatted_prompt, &guess)?;
+                        }
+                        _ => {}
+                    }
+                }
             }
-
-            if guess == answer {
-                println!("🎉 Correct!");
-                break;
-            }
-
-            println!("Nope, try again or type 'give up'.");
         }
-    }
+    })();
+
+    terminal::disable_raw_mode()?;
+    result
+}
+
+fn format_prompt(scrambled: &str) -> String {
+    scrambled
+        .to_uppercase()
+        .chars()
+        .map(|c| c.to_string())
+        .collect::<Vec<_>>()
+        .join("·")
+}
+
+fn draw_new_prompt(
+    stdout: &mut Stdout,
+    prompt: &str,
+    guess: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    execute!(
+        stdout,
+        cursor::MoveToColumn(0),
+        Print("\r\n"),
+        Print(prompt),
+        Print("\r\n> "),
+        Print(guess)
+    )?;
+    stdout.flush()?;
+    Ok(())
+}
+
+fn render_prompt(
+    stdout: &mut Stdout,
+    prompt: &str,
+    guess: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    queue!(
+        stdout,
+        cursor::MoveUp(1),
+        cursor::MoveToColumn(0),
+        terminal::Clear(ClearType::CurrentLine),
+        Print(prompt),
+        cursor::MoveDown(1),
+        cursor::MoveToColumn(0),
+        terminal::Clear(ClearType::CurrentLine),
+        Print(format!("> {}", guess))
+    )?;
+    stdout.flush()?;
+    Ok(())
 }
 
 fn main() {
