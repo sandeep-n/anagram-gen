@@ -70,12 +70,12 @@ fn run_interactive_prompt() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             if guess == "give up" || guess == "giveup" {
-                println!("Give up! The word was: {}", answer.to_uppercase());
+                println!("The word was: {}", answer.to_uppercase());
                 break;
             }
 
             if guess == answer {
-                println!("🎉 Correct! The word is {}", answer.to_uppercase());
+                println!("🎉 Correct!");
                 break;
             }
 
