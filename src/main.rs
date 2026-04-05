@@ -25,55 +25,63 @@ enum Commands {
 
 fn run_interactive_prompt() -> Result<(), Box<dyn std::error::Error>> {
     let map = anagram_gen::BUNDLED_MAP.lock().unwrap();
-    let answer =
-        anagram_gen::pick_random_prompt_word(&map).ok_or("corpus has no eligible prompt words")?;
-    let scrambled = loop {
-        let cand = anagram_gen::shuffle(&answer);
-        if cand != answer {
-            break cand;
-        }
-    };
 
-    let formatted_prompt = scrambled
-        .to_uppercase()
-        .chars()
-        .map(|c| c.to_string())
-        .collect::<Vec<_>>()
-        .join("·");
-
-    println!("{}", formatted_prompt);
-    println!("Type your guess (or 'give up' to reveal the answer)");
+    println!(
+        "Enter guesses for each prompt. Type 'give up' to reveal the answer, 'quit'/'exit' to leave, or Ctrl+D to exit."
+    );
 
     loop {
-        print!("> ");
-        io::stdout().flush()?;
+        let answer = anagram_gen::pick_random_prompt_word(&map)
+            .ok_or("corpus has no eligible prompt words")?;
+        let scrambled = loop {
+            let cand = anagram_gen::shuffle(&answer);
+            if cand != answer {
+                break cand;
+            }
+        };
 
-        let mut guess = String::new();
-        let nread = io::stdin().read_line(&mut guess)?;
-        if nread == 0 {
-            println!("EOF received, the word was: {}", answer);
-            break;
-        }
-        let guess = guess.trim().to_lowercase();
-        if guess.is_empty() {
-            println!("Please type a guess or 'give up'.");
-            continue;
-        }
+        let formatted_prompt = scrambled
+            .to_uppercase()
+            .chars()
+            .map(|c| c.to_string())
+            .collect::<Vec<_>>()
+            .join("·");
 
-        if guess == "give up" || guess == "giveup" || guess == "quit" || guess == "exit" {
-            println!("Give up! The word was: {}", answer);
-            break;
-        }
+        println!("\n{}", formatted_prompt);
 
-        if guess == answer {
-            println!("🎉 Correct! The word is {}", answer);
-            break;
-        }
+        loop {
+            print!("> ");
+            io::stdout().flush()?;
 
-        println!("Nope, try again or type 'give up'.");
+            let mut guess = String::new();
+            let nread = io::stdin().read_line(&mut guess)?;
+            if nread == 0 {
+                println!("\nGoodbye.");
+                return Ok(());
+            }
+            let guess = guess.trim().to_lowercase();
+            if guess.is_empty() {
+                continue;
+            }
+
+            if guess == "quit" || guess == "exit" {
+                println!("Exiting prompt mode.");
+                return Ok(());
+            }
+
+            if guess == "give up" || guess == "giveup" {
+                println!("Give up! The word was: {}", answer.to_uppercase());
+                break;
+            }
+
+            if guess == answer {
+                println!("🎉 Correct! The word is {}", answer.to_uppercase());
+                break;
+            }
+
+            println!("Nope, try again or type 'give up'.");
+        }
     }
-
-    Ok(())
 }
 
 fn main() {
