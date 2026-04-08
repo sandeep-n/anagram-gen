@@ -58,9 +58,11 @@ fn run_interactive_prompt() -> Result<(), Box<dyn std::error::Error>> {
                 {
                     match code {
                         KeyCode::Char('c') if modifiers.contains(KeyModifiers::CONTROL) => {
+                            print!("\r\nThe word was: {}\r\n", answer.to_uppercase());
                             return Ok(());
                         }
                         KeyCode::Char('d') if modifiers.contains(KeyModifiers::CONTROL) => {
+                            print!("\r\nThe word was: {}\r\n", answer.to_uppercase());
                             return Ok(());
                         }
                         KeyCode::Tab => {
@@ -79,6 +81,7 @@ fn run_interactive_prompt() -> Result<(), Box<dyn std::error::Error>> {
                                 continue;
                             }
                             if normalized == "quit" || normalized == "exit" {
+                                print!("\r\nThe word was: {}\r\n", answer.to_uppercase());
                                 return Ok(());
                             }
                             if normalized == "give up" || normalized == "giveup" {
